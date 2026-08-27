@@ -34,7 +34,7 @@ fn problem_3_10() -> Option<String> {
         1.0, 0.0,
     );  // Init values
 
-    for i in 0..5 {
+    for i in 0..10 {
         let input = Vector2::new(dataset[i%4].0, 1.0);
         let target = dataset[i%4].1;
 
@@ -53,8 +53,8 @@ fn problem_3_10() -> Option<String> {
         };
 
         // Backprop
-        let dL_dh1 = y_hat[0] - 1.0;
-        let dL_dh2 = y_hat[1];
+        let dL_dh1 = if target == "Paris" {y_hat[0] - 1.0} else {y_hat[0]};
+        let dL_dh2 = if target == "Paris" {y_hat[1]} else {y_hat[1] - 1.0};
         let dh1_dm1 = input[0];
         let dh2_dm2 = input[0];
         let dh1_db1 = 1.0;
