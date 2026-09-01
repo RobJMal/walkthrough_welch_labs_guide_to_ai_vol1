@@ -123,17 +123,27 @@ fn single_neuron(
         // Forward pass
         let y_hat = weights.dot(&input);
 
-        // Compute loss
+        // Compute loss and backprop 
         let mut loss = 0.0;
+        let mut dL_dm = 0.0;
+        let mut dL_db = 0.0;
         if loss_fn == "l2" {
-            loss = f64::powi(target - y_hat, 2);
+            loss = f64::powi(y_hat - target, 2);
+            dL_dm = 2.0 * (y_hat - target) * input[0];
+            dL_db = 2.0 * (y_hat - target);
         } else if loss_fn == "l1" {
-            loss = target - y_hat;
+            let diff = y_hat - target;
+            loss = f64::abs(diff);
+            if diff > 0.0 {
+                dL_dm = input[0];
+                dL_db = 1.0;
+            } else if diff < 0.0 {
+                dL_dm = -1.0 * input[0];
+                dL_db = -1.0;
+            }
         } 
 
         // Backprop
-        let dL_dm = 2.0 * (y_hat - target) * input[0];
-        let dL_db = 2.0 * (y_hat - target);
         let grad = Vector2::new(dL_dm, dL_db);
 
         // Print output
@@ -216,13 +226,31 @@ fn problem_3_23() -> Option<String> {
         (4.0, 9.0),
     ];
 
-    let learning_rate: f64 = 0.07;
-    let iters: usize = 10000;
+    let learning_rate: f64 = 0.1;
+    let iters: usize = 8;
     let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
 
     single_neuron(dataset, weights, learning_rate, iters, "l2");    
 
     Some("P3.23 is finished".to_string())
+}
+
+/// Implement GD from 3.24 to 3.29
+fn problem_3_29() -> Option<String> {
+    let dataset: [(f64, f64); 4] = [
+        (1.0, 3.0),
+        (2.0, 5.0),
+        (3.0, 7.0),
+        (4.0, 9.0),
+    ];
+
+    let learning_rate: f64 = 0.1;
+    let iters: usize = 8;
+    let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
+
+    single_neuron(dataset, weights, learning_rate, iters, "l1");    
+
+    Some("P3.29 is finished".to_string())
 }
 
 pub fn run() {
@@ -231,6 +259,8 @@ pub fn run() {
     // println!("----");
     // problem_3_17();
     // println!("----");
-    problem_3_23();
-    println!("----");
+    // problem_3_23();
+    println!("");
+    println!("---- P3.29 ----");
+    problem_3_29();
 }
