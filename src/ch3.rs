@@ -1,3 +1,4 @@
+use core::f64;
 use std::{fmt::Write, ops::Mul};
 
 use nalgebra::{Matrix2, Vector2};
@@ -148,6 +149,14 @@ fn single_neuron(
         writeln!(step_output, "loss     | {:.3}", loss).unwrap();
         println!("{}", step_output);
 
+        // Checking if converging to target
+        let target_tol: f64 = 0.001;
+        if f64::abs(weights[0] - 2.0) <= target_tol && f64::abs(weights[1] - 1.0) <= target_tol {
+            println!("Converged within {i} steps to be within +/-{target_tol:.3}");
+            println!("m = {:.4}, b = {:.4}", weights[0], weights[1]);
+            break;
+        } 
+
         // Updating weights after printout
         weights = weights - learning_rate * grad;
     }
@@ -198,6 +207,7 @@ fn problem_3_17() -> Option<String> {
     Some("P3.17 is finished".to_string())
 }
 
+/// Implement GD from 3.18 to 3.23
 fn problem_3_23() -> Option<String> {
     let dataset: [(f64, f64); 4] = [
         (1.0, 3.0),
@@ -206,8 +216,8 @@ fn problem_3_23() -> Option<String> {
         (4.0, 9.0),
     ];
 
-    let learning_rate: f64 = 0.1;
-    let iters: usize = 8;
+    let learning_rate: f64 = 0.07;
+    let iters: usize = 10000;
     let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
 
     single_neuron(dataset, weights, learning_rate, iters, "l2");    
