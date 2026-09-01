@@ -31,7 +31,7 @@ fn simple_neural_net(
         let mut loss = 0.0;
         if target == "Paris" {
             loss = -y_hat[0].ln();
-        } else if target == "Berlin" {
+        } else if target == "Berlin" || target == "Madrid" {
             loss = -y_hat[1].ln();
         };
 
@@ -65,7 +65,7 @@ fn simple_neural_net(
             let y_hat_i = Vector2::from_column_slice(&softmax_vec(h_i.as_slice()));
             let (max_row, _) = y_hat_i.argmax();
 
-            if (max_row == 0 && *city == "Paris") || (max_row == 1 && *city == "Berlin") {
+            if (max_row == 0 && *city == "Paris") || (max_row == 1 && (*city == "Berlin" || *city == "Madrid")) {
                 accuracy += 1.0;
             }
         }
@@ -95,7 +95,7 @@ fn simple_neural_net(
         writeln!(
             step_output,
             "y2       | {:.3}",
-            if target == "Berlin" { 1.0 } else { 0.0 }
+            if target == "Berlin" || target == "Madrid" { 1.0 } else { 0.0 }
         )
         .unwrap();
         writeln!(step_output, "loss     | {:.3}", loss).unwrap();
@@ -119,14 +119,41 @@ fn problem_3_10() -> Option<String> {
 
     let learning_rate: f64 = 0.1;
 
-    let mut weights = Matrix2::new(-1.0, 0.0, 1.0, 0.0); // Init values
+    let mut weights = Matrix2::new(
+        -1.0, 0.0, 
+        1.0, 0.0
+    ); // Init values
 
     simple_neural_net(dataset, weights, learning_rate, 10);
 
     Some("P3.10 is finished".to_string())
 }
 
+/// Implement NN from P3.11 to P3.17
+fn problem_3_17() -> Option<String> {
+    let dataset: [(f64, &str); 4] = [
+        // longitude, city
+        (2.3514, "Paris"),
+        (2.2945, "Paris"),
+        (-3.7033, "Madrid"),
+        (-3.6835, "Madrid"),
+    ];
+
+    let learning_rate: f64 = 0.1;
+
+    let mut weights = Matrix2::new(
+        -1.0, 0.0, 
+        0.5, 0.0
+    ); // Init values
+
+    simple_neural_net(dataset, weights, learning_rate, 4);
+
+    Some("P3.17 is finished".to_string())
+}
+
 pub fn run() {
     println!("---- Chapter 3 Problems ----");
     problem_3_10();
+    println!("----");
+    problem_3_17();
 }
