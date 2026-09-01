@@ -18,9 +18,12 @@ fn problem_1_16(input_targets: &[(Vector3<i32>, i32); 8]) -> Option<String> {
             weights = weights - input;
         }
         // Case 3 & 4: target and output are the same signs -> DO nothing
-        println!("Step {}", i+1);
+        println!("Step {}", i + 1);
         println!("target = {target} |  y_hat = {y_hat}");
-        println!("Updated parameters | w1: {}, w2: {}, b: {}", weights[0], weights[1], weights[2]);
+        println!(
+            "Updated parameters | w1: {}, w2: {}, b: {}",
+            weights[0], weights[1], weights[2]
+        );
         println!("");
     }
 
@@ -29,7 +32,7 @@ fn problem_1_16(input_targets: &[(Vector3<i32>, i32); 8]) -> Option<String> {
 
 /// Problem 1.17: Implement Least Mean Squares (LMS)
 fn problem_1_17(input_targets: &[(Vector3<f64>, f64); 12]) -> Option<String> {
-    let alpha: f64 = 0.2;   // learning rate
+    let alpha: f64 = 0.2; // learning rate
     let mut weights = Vector3::new(0.0, 0.0, 0.0);
 
     // --- LMS ---
@@ -47,8 +50,12 @@ fn problem_1_17(input_targets: &[(Vector3<f64>, f64); 12]) -> Option<String> {
              dE/dw1: {:.2} | dE/dw2: {:.2} | dE/db: {:.2} | \
              (a/2)dE/dw1: {:.2} | (a/2)dE/dw2: {:.2} | (a/2)dE/db: {:.2}",
             i + 1,
-            dE[0], dE[1], dE[2],
-            weight_update_term[0], weight_update_term[1], weight_update_term[2]
+            dE[0],
+            dE[1],
+            dE[2],
+            weight_update_term[0],
+            weight_update_term[1],
+            weight_update_term[2]
         );
         println!("{}", result);
     }
