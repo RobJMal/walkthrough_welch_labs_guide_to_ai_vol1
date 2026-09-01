@@ -1,48 +1,31 @@
-use std::{ops::Mul, fmt::Write};
+use std::{fmt::Write, ops::Mul};
 
 use nalgebra::{Matrix2, Vector2};
 
 // ---- HELPER METHODS ----
-/// Computes vectorized softmax. 
+/// Computes vectorized softmax.
 fn softmax_vec(x: &[f64]) -> Vec<f64> {
-    let denom: f64 = x
-        .iter()
-        .map(|x| f64::exp(*x))
-        .sum();
+    let denom: f64 = x.iter().map(|x| f64::exp(*x)).sum();
 
-    let result: Vec<f64> = x.iter()
-        .map(|x| f64::exp(*x) / denom)
-        .collect(); 
+    let result: Vec<f64> = x.iter().map(|x| f64::exp(*x) / denom).collect();
 
     result
 }
 
-/// Implement neural network from P3.4 to P3.10. 
-fn problem_3_10() -> Option<String> {
-    let dataset: [(f64, &str); 4] = [
-        // longitude, city
-        (2.3514, "Paris"),
-        (2.2945, "Paris"),
-        (13.4050, "Berlin"),
-        (13.3777, "Berlin"),
-    ];
-
-    let learning_rate: f64 = 0.1;
-
-    let mut weights = Matrix2::new(
-        -1.0, 0.0, 
-        1.0, 0.0,
-    );  // Init values
-
-    for i in 0..10 {
-        let input = Vector2::new(dataset[i%4].0, 1.0);
-        let target = dataset[i%4].1;
+/// Simple NN that is used in P3.10 and 3.17.
+fn simple_neural_net(
+    dataset: [(f64, &str); 4],
+    mut weights: Matrix2<f64>,
+    learning_rate: f64,
+    iters: usize,
+) {
+    for i in 0..iters {
+        let input = Vector2::new(dataset[i % 4].0, 1.0);
+        let target = dataset[i % 4].1;
 
         // Compute forward pass
         let h_vec = weights.mul(input);
-        let y_hat = Vector2::from_column_slice(
-            &softmax_vec(h_vec.as_slice())
-        );
+        let y_hat = Vector2::from_column_slice(&softmax_vec(h_vec.as_slice()));
 
         // Compute cross-entropy loss
         let mut loss = 0.0;
@@ -53,27 +36,35 @@ fn problem_3_10() -> Option<String> {
         };
 
         // Backprop
-        let dL_dh1 = if target == "Paris" {y_hat[0] - 1.0} else {y_hat[0]};
-        let dL_dh2 = if target == "Paris" {y_hat[1]} else {y_hat[1] - 1.0};
+        let dL_dh1 = if target == "Paris" {
+            y_hat[0] - 1.0
+        } else {
+            y_hat[0]
+        };
+        let dL_dh2 = if target == "Paris" {
+            y_hat[1]
+        } else {
+            y_hat[1] - 1.0
+        };
         let dh1_dm1 = input[0];
         let dh2_dm2 = input[0];
         let dh1_db1 = 1.0;
         let dh2_db2 = 1.0;
 
         let grad = Matrix2::new(
-            dL_dh1 * dh1_dm1, dL_dh1 * dh1_db1, 
-            dL_dh2 * dh2_dm2, dL_dh2 * dh2_db2,
+            dL_dh1 * dh1_dm1,
+            dL_dh1 * dh1_db1,
+            dL_dh2 * dh2_dm2,
+            dL_dh2 * dh2_db2,
         );
-        
+
         let mut accuracy = 0.0;
         for (longitude, city) in dataset.iter() {
             let x_i = Vector2::new(*longitude, 1.0);
             let h_i = weights.mul(x_i);
-            let y_hat_i = Vector2::from_column_slice(
-                &softmax_vec(h_i.as_slice())
-            );
+            let y_hat_i = Vector2::from_column_slice(&softmax_vec(h_i.as_slice()));
             let (max_row, _) = y_hat_i.argmax();
-            
+
             if (max_row == 0 && *city == "Paris") || (max_row == 1 && *city == "Berlin") {
                 accuracy += 1.0;
             }
@@ -95,8 +86,18 @@ fn problem_3_10() -> Option<String> {
         writeln!(step_output, "h2       | {:.3}", h_vec[1]).unwrap();
         writeln!(step_output, "y_hat1   | {:.3}", y_hat[0]).unwrap();
         writeln!(step_output, "y_hat2   | {:.3}", y_hat[1]).unwrap();
-        writeln!(step_output, "y1       | {:.3}", if target == "Paris" {1.0} else {0.0}).unwrap();
-        writeln!(step_output, "y2       | {:.3}", if target == "Berlin" {1.0} else {0.0}).unwrap();
+        writeln!(
+            step_output,
+            "y1       | {:.3}",
+            if target == "Paris" { 1.0 } else { 0.0 }
+        )
+        .unwrap();
+        writeln!(
+            step_output,
+            "y2       | {:.3}",
+            if target == "Berlin" { 1.0 } else { 0.0 }
+        )
+        .unwrap();
         writeln!(step_output, "loss     | {:.3}", loss).unwrap();
         writeln!(step_output, "accuracy | {:.3}", accuracy).unwrap();
         println!("{}", step_output);
@@ -104,9 +105,25 @@ fn problem_3_10() -> Option<String> {
         // Update the weights (doing it after printout so easier to check work)
         weights = weights - grad.mul(learning_rate);
     }
+}
 
+/// Implement neural network from P3.4 to P3.10.
+fn problem_3_10() -> Option<String> {
+    let dataset: [(f64, &str); 4] = [
+        // longitude, city
+        (2.3514, "Paris"),
+        (2.2945, "Paris"),
+        (13.4050, "Berlin"),
+        (13.3777, "Berlin"),
+    ];
 
-    Some("problem is finished".to_string())
+    let learning_rate: f64 = 0.1;
+
+    let mut weights = Matrix2::new(-1.0, 0.0, 1.0, 0.0); // Init values
+
+    simple_neural_net(dataset, weights, learning_rate, 10);
+
+    Some("P3.10 is finished".to_string())
 }
 
 pub fn run() {
