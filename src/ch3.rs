@@ -107,6 +107,53 @@ fn simple_neural_net(
     }
 }
 
+/// Single NN that's used in P3.23 and 3.29
+fn single_neuron(
+    dataset: [(f64, f64); 4],
+    mut weights: Vector2<f64>,
+    learning_rate: f64,
+    iters: usize,
+    loss_fn: &str,
+) {
+    for i in 0..iters {
+        let input = Vector2::new(dataset[i % dataset.len()].0, 1.0);
+        let target = dataset[i % dataset.len()].1;
+
+        // Forward pass
+        let y_hat = weights.dot(&input);
+
+        // Compute loss
+        let mut loss = 0.0;
+        if loss_fn == "l2" {
+            loss = f64::powi(target - y_hat, 2);
+        } else if loss_fn == "l1" {
+            loss = target - y_hat;
+        } 
+
+        // Backprop
+        let dL_dm = 2.0 * (y_hat - target) * input[0];
+        let dL_db = 2.0 * (y_hat - target);
+        let grad = Vector2::new(dL_dm, dL_db);
+
+        // Print output
+        let mut step_output = String::new();
+        writeln!(step_output, "Step     | {}", i).unwrap();
+        writeln!(step_output, "x        | {:.3}", input[0]).unwrap();
+        writeln!(step_output, "m        | {:.3}", weights[0]).unwrap();
+        writeln!(step_output, "dL_dm    | {:.3}", grad[0]).unwrap();
+        writeln!(step_output, "b        | {:.3}", weights[1]).unwrap();
+        writeln!(step_output, "dL_db    | {:.3}", grad[1]).unwrap();
+        writeln!(step_output, "y_hat    | {:.3}", y_hat).unwrap();
+        writeln!(step_output, "y        | {:.3}", target).unwrap();
+        writeln!(step_output, "loss     | {:.3}", loss).unwrap();
+        println!("{}", step_output);
+
+        // Updating weights after printout
+        weights = weights - learning_rate * grad;
+    }
+}
+
+// ---- PROBLEMS ----
 /// Implement neural network from P3.4 to P3.10.
 fn problem_3_10() -> Option<String> {
     let dataset: [(f64, &str); 4] = [
@@ -151,9 +198,29 @@ fn problem_3_17() -> Option<String> {
     Some("P3.17 is finished".to_string())
 }
 
+fn problem_3_23() -> Option<String> {
+    let dataset: [(f64, f64); 4] = [
+        (1.0, 3.0),
+        (2.0, 5.0),
+        (3.0, 7.0),
+        (4.0, 9.0),
+    ];
+
+    let learning_rate: f64 = 0.1;
+    let iters: usize = 8;
+    let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
+
+    single_neuron(dataset, weights, learning_rate, iters, "l2");    
+
+    Some("P3.23 is finished".to_string())
+}
+
 pub fn run() {
     println!("---- Chapter 3 Problems ----");
-    problem_3_10();
+    // problem_3_1<<0();
+    // println!("----");
+    // problem_3_17();
+    // println!("----");
+    problem_3_23();
     println!("----");
-    problem_3_17();
 }
