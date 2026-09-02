@@ -2,6 +2,8 @@ use core::f64;
 use std::{fmt::Write, ops::Mul};
 
 use nalgebra::{Matrix2, Vector2};
+use plotters::prelude::*;
+use serde::{Deserialize, Serialize};
 
 // ---- HELPER METHODS ----
 /// Computes vectorized softmax.
@@ -109,13 +111,17 @@ fn simple_neural_net(
 }
 
 /// Single NN that's used in P3.23 and 3.29
+///
+/// Returns the step at which weights converged to within the target tolerance,
+/// or `None` if it did not converge within `iters` steps.
 fn single_neuron(
     dataset: [(f64, f64); 4],
     mut weights: Vector2<f64>,
     learning_rate: f64,
     iters: usize,
     loss_fn: &str,
-) {
+    verbose: bool,
+) -> Option<usize> {
     for i in 0..iters {
         let input = Vector2::new(dataset[i % dataset.len()].0, 1.0);
         let target = dataset[i % dataset.len()].1;
@@ -147,29 +153,35 @@ fn single_neuron(
         let grad = Vector2::new(dL_dm, dL_db);
 
         // Print output
-        let mut step_output = String::new();
-        writeln!(step_output, "Step     | {}", i).unwrap();
-        writeln!(step_output, "x        | {:.3}", input[0]).unwrap();
-        writeln!(step_output, "m        | {:.3}", weights[0]).unwrap();
-        writeln!(step_output, "dL_dm    | {:.3}", grad[0]).unwrap();
-        writeln!(step_output, "b        | {:.3}", weights[1]).unwrap();
-        writeln!(step_output, "dL_db    | {:.3}", grad[1]).unwrap();
-        writeln!(step_output, "y_hat    | {:.3}", y_hat).unwrap();
-        writeln!(step_output, "y        | {:.3}", target).unwrap();
-        writeln!(step_output, "loss     | {:.3}", loss).unwrap();
-        println!("{}", step_output);
+        if verbose {
+            let mut step_output = String::new();
+            writeln!(step_output, "Step     | {}", i).unwrap();
+            writeln!(step_output, "x        | {:.3}", input[0]).unwrap();
+            writeln!(step_output, "m        | {:.3}", weights[0]).unwrap();
+            writeln!(step_output, "dL_dm    | {:.3}", grad[0]).unwrap();
+            writeln!(step_output, "b        | {:.3}", weights[1]).unwrap();
+            writeln!(step_output, "dL_db    | {:.3}", grad[1]).unwrap();
+            writeln!(step_output, "y_hat    | {:.3}", y_hat).unwrap();
+            writeln!(step_output, "y        | {:.3}", target).unwrap();
+            writeln!(step_output, "loss     | {:.3}", loss).unwrap();
+            println!("{}", step_output);
+        }
 
         // Checking if converging to target
         let target_tol: f64 = 0.001;
         if f64::abs(weights[0] - 2.0) <= target_tol && f64::abs(weights[1] - 1.0) <= target_tol {
-            println!("Converged within {i} steps to be within +/-{target_tol:.3}");
-            println!("m = {:.4}, b = {:.4}", weights[0], weights[1]);
-            break;
-        } 
+            if verbose {
+                println!("Converged within {i} steps to be within +/-{target_tol:.3}");
+                println!("m = {:.4}, b = {:.4}", weights[0], weights[1]);
+            }
+            return Some(i);
+        }
 
         // Updating weights after printout
         weights = weights - learning_rate * grad;
     }
+
+    None
 }
 
 // ---- PROBLEMS ----
@@ -228,11 +240,112 @@ fn problem_3_23() -> Option<String> {
 
     let learning_rate: f64 = 0.1;
     let iters: usize = 8;
-    let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
+    let weights = Vector2::new(1.0, 0.0);    // [m, b]
 
-    single_neuron(dataset, weights, learning_rate, iters, "l2");    
+    single_neuron(dataset, weights, learning_rate, iters, "l2", true);
 
     Some("P3.23 is finished".to_string())
+}
+
+#[derive(Serialize, Deserialize)]
+struct LrSweepResult {
+    learning_rate: f64,
+    converged_step: Option<usize>,
+}
+
+/// Sweeps learning_rate from 0.01 to 0.15 (step 0.01) for the P3.23 single neuron
+/// and records the step at which it converges to within the +/-0.001 tolerance.
+/// Results are cached to a JSON file so the sweep doesn't need to be re-run, and a
+/// PNG plot (learning rate vs. converged step) is generated from those results.
+fn problem_3_23_learning_rate_sweep() -> Option<String> {
+    let results_path = "results/p3_23_lr_sweep.json";
+    let plot_path = "results/p3_23_lr_sweep.png";
+
+    let results: Vec<LrSweepResult> = if let Ok(contents) = std::fs::read_to_string(results_path) {
+        println!("Loading cached sweep results from {results_path}");
+        serde_json::from_str(&contents).expect("failed to parse cached sweep results")
+    } else {
+        println!("No cached sweep results found, running sweep...");
+
+        let dataset: [(f64, f64); 4] = [
+            (1.0, 3.0),
+            (2.0, 5.0),
+            (3.0, 7.0),
+            (4.0, 9.0),
+        ];
+        let iters: usize = 10000;
+
+        let mut results = Vec::new();
+        for lr_step in 1..=15 {
+            let learning_rate = lr_step as f64 * 0.01;
+            let weights = Vector2::new(1.0, 0.0);
+
+            let converged_step = single_neuron(dataset, weights, learning_rate, iters, "l2", false);
+            println!("learning_rate = {learning_rate:.2} | converged_step = {converged_step:?}");
+
+            results.push(LrSweepResult { learning_rate, converged_step });
+        }
+
+        std::fs::create_dir_all("results").expect("failed to create results directory");
+        let json = serde_json::to_string_pretty(&results).expect("failed to serialize sweep results");
+        std::fs::write(results_path, json).expect("failed to write sweep results");
+        println!("Saved sweep results to {results_path}");
+
+        results
+    };
+
+    plot_lr_sweep(&results, plot_path).expect("failed to plot sweep results");
+    println!("Saved sweep plot to {plot_path}");
+
+    Some("P3.23 learning rate sweep is finished".to_string())
+}
+
+/// Plots learning rate (x-axis) vs. converged step (y-axis) to a PNG file.
+fn plot_lr_sweep(results: &[LrSweepResult], path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let points: Vec<(f64, usize)> = results
+        .iter()
+        .filter_map(|r| r.converged_step.map(|step| (r.learning_rate, step)))
+        .collect();
+
+    let max_step = points.iter().map(|(_, step)| *step).max().unwrap_or(0);
+    let min_lr = results.iter().map(|r| r.learning_rate).fold(f64::INFINITY, f64::min);
+    let max_lr = results.iter().map(|r| r.learning_rate).fold(f64::NEG_INFINITY, f64::max);
+
+    let root = BitMapBackend::new(path, (800, 600)).into_drawing_area();
+    root.fill(&WHITE)?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption("P3.23: Converged Step vs. Learning Rate", ("sans-serif", 24))
+        .margin(20)
+        .x_label_area_size(40)
+        .y_label_area_size(60)
+        .build_cartesian_2d(
+            (min_lr - 0.005)..(max_lr + 0.005),
+            0..(max_step + max_step / 10 + 1),
+        )?;
+
+    chart
+        .configure_mesh()
+        .x_desc("Learning rate")
+        .y_desc("Converged step")
+        .draw()?;
+
+    chart.draw_series(LineSeries::new(points.iter().copied(), &BLUE))?;
+    chart.draw_series(
+        points
+            .iter()
+            .map(|(lr, step)| Circle::new((*lr, *step), 4, BLUE.filled())),
+    )?;
+
+    root.present()?;
+
+    for r in results {
+        if r.converged_step.is_none() {
+            println!("learning_rate {:.2} did not converge within the iteration cap", r.learning_rate);
+        }
+    }
+
+    Ok(())
 }
 
 /// Implement GD from 3.24 to 3.29
@@ -246,9 +359,9 @@ fn problem_3_29() -> Option<String> {
 
     let learning_rate: f64 = 0.1;
     let iters: usize = 8;
-    let mut weights = Vector2::new(1.0, 0.0);    // [m, b]
+    let weights = Vector2::new(1.0, 0.0);    // [m, b]
 
-    single_neuron(dataset, weights, learning_rate, iters, "l1");    
+    single_neuron(dataset, weights, learning_rate, iters, "l1", true);
 
     Some("P3.29 is finished".to_string())
 }
@@ -258,10 +371,13 @@ pub fn run() {
     // problem_3_1<<0();
     // println!("----");
     // problem_3_17();
-    // println!("");
-    // println!("----");
-    // problem_3_23();
     println!("");
-    println!("---- P3.29 ----");
-    problem_3_29();
+    println!("---- P3.23 ----");
+    problem_3_23();
+    // println!("");
+    // println!("---- P3.23 Learning Rate Sweep ----");
+    // problem_3_23_learning_rate_sweep();
+    // println!("");
+    // println!("---- P3.29 ----");
+    // problem_3_29();
 }
